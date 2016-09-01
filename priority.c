@@ -1,5 +1,5 @@
 /*
- * Cloned from https://github.com/phanikishoreg/scheduler-benchmarks
+ * Initial Clone from https://github.com/phanikishoreg/scheduler-benchmarks
  */
 #define _GNU_SOURCE
 #include <assert.h>

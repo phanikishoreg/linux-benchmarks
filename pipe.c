@@ -1,5 +1,5 @@
 /*
- * Cloned from : https://github.com/phanikishoreg/scheduler-benchmarks
+ * Initial Clone from : https://github.com/phanikishoreg/scheduler-benchmarks
  */
 #include <stdio.h>
 #include <unistd.h>
@@ -71,7 +71,6 @@ main(int argc, char **argv)
 				_exit(-1);
 			}
 			r_end = rdtsc();
-			//printf("%llu\n", r_end - r_start);
 			r_total += (r_end - r_start);
 		}
 		printf("read/write - %llu\n", (r_total)/(2 * ITERS));
