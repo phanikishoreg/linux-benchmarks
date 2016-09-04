@@ -52,7 +52,6 @@ main(int argc, char **argv)
 				/* TODO: kill child! */
 				exit(-1);
 			}
-			sched_yield();
 		}
 		close(pipe_fd[1]);
 		wait(NULL);
