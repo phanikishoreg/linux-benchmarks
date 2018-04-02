@@ -63,11 +63,13 @@ thd_affinity(pthread_t thd)
 static void
 proc_affinity(void)
 {
+	int cpu_aff = 0;
+
 	cpu_set_t cpuset;
 	int i;
 
 	CPU_ZERO(&cpuset);
-	CPU_SET(0, &cpuset);
+	CPU_SET(cpu_aff, &cpuset);
 
 	if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset)) {
 		perror("sched_setaffinity:");
@@ -76,11 +78,12 @@ proc_affinity(void)
 		perror("sched_getaffinity:");
 	}
 
-	if (!CPU_ISSET(0, &cpuset)) {
+	if (!CPU_ISSET(cpu_aff, &cpuset)) {
 		printf("affinity not set\n");
 	} 
 
-	for (i = 1 ; i < CPU_SETSIZE ; i ++) {
+	cpu_aff ++;
+	for (i = cpu_aff ; i < CPU_SETSIZE ; i ++) {
 		if (CPU_ISSET(i, &cpuset))
 			printf("affinity set invalid: %d\n", i);
 	}

@@ -28,7 +28,7 @@ main(int argc, char **argv)
 {
 	int pipe_fd[2];
 	pid_t child;
-	unsigned long long w_total, w_start, w_end, r_total, r_start, r_end;
+	unsigned long long w_total, w_start, w_end, r_total, r_start, r_end, r_worst = 0;
 	char ch = 'a';
 
 	if (pipe(pipe_fd) < 0) {
@@ -70,9 +70,10 @@ main(int argc, char **argv)
 				_exit(-1);
 			}
 			r_end = rdtsc();
+			if ((r_end - r_start) > r_worst) r_worst = r_end - r_start;
 			r_total += (r_end - r_start);
 		}
-		printf("read/write - %llu\n", (r_total)/(2 * ITERS));
+		printf("read/write AVERAGE: %llu, WORST: %llu\n", (r_total)/(2 * ITERS), r_worst);
 
 		close (pipe_fd[0]);
 		_exit(0);

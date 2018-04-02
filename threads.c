@@ -11,6 +11,7 @@ extern void pthread_prio(pthread_t pid, unsigned int nice);
 unsigned long long start, end, total;
 pthread_t thd;
 int testing;
+unsigned long long worst_case = 0;
 
 static __inline__ unsigned long long
 rdtsc(void)
@@ -47,13 +48,14 @@ main(void)
 		start = rdtsc();
 		pthread_yield();
 		end = rdtsc();
+		if ((end - start) > worst_case) worst_case = end - start;
 		total += (end - start);
 	}
 	testing = 0;
 	pthread_yield();
 
 	pthread_join(thd, NULL);
-	printf("%llu\n", total / (2 * ITERS));
+	printf("AVERAGE:%llu, WORST:%llu\n", total / (2 * ITERS), worst_case);
 
 	return 0;
 }

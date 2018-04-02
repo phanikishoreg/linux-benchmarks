@@ -28,7 +28,7 @@ main(int argc, char **argv)
 {
 	int pipe1_fd[2], pipe2_fd[2];
 	pid_t child;
-	unsigned long long total, start, end;
+	unsigned long long total, start, end, worst_case = 0;
 	char ch = 'a';
 
 	if (pipe(pipe1_fd) < 0) {
@@ -41,54 +41,51 @@ main(int argc, char **argv)
 		return -1;
 	}
 
-	set_prio(1);
+	set_prio(0);
 	child = fork();
 	if (child == 0) {
 		int i;
 
-		close(pipe1_fd[0]);
-		close(pipe2_fd[1]);
-
-		/* making sure read blocks for predictability */
-		usleep(USEC_WAIT); 
+		close(pipe1_fd[0]); /* only write here */
+		close(pipe2_fd[1]); /* only read here */
 
 		for (i = 0 ; i < ITERS ; i ++) {
 			start = rdtsc();
-			if (write(pipe1_fd[1], &ch, 1) < 0) {
+			if (write(pipe1_fd[1], &ch, 1) <= 0) {
 				perror("write");
 				/* TODO: kill child! */
 				_exit(-1);
 			}
-			if (read(pipe2_fd[0], &ch, 1) < 0) {
-				perror("write");
+			if (read(pipe2_fd[0], &ch, 1) <= 0) {
+				perror("read");
 				/* TODO: kill child! */
 				_exit(-1);
 			}
 			end = rdtsc();
 
+			if ((end - start) > worst_case) worst_case = end - start;
 			total += (end - start);
 
 		}
 		close(pipe1_fd[1]);
 		close(pipe2_fd[0]);
 
-		printf("rpc - %llu\n", (total/(unsigned long long)ITERS));
+		printf("rpc AVERAGE: %llu WORST: %llu\n", (total/(unsigned long long)ITERS), worst_case);
 		_exit(0);
 	} else if (child > 0) {
 		int i;
 
-		set_prio(0);
-		close(pipe1_fd[1]);
-		close(pipe2_fd[0]);
+		set_prio(1);
+		close(pipe1_fd[1]); /* only read here */
+		close(pipe2_fd[0]); /* only write here */
 
 		for (i = 0 ; i < ITERS ; i ++) {
-			if (read(pipe1_fd[0], &ch, 1) < 0) {
+			if (read(pipe1_fd[0], &ch, 1) <= 0) {
 				perror("read");
 				exit(-1);
 			}
-			if (write(pipe2_fd[1], &ch, 1) < 0) {
+			if (write(pipe2_fd[1], &ch, 1) <= 0) {
 				perror("write");
-				/* TODO: kill child! */
 				exit(-1);
 			}
 		}
