@@ -38,7 +38,7 @@ main(void)
 {
 	int i;
 
-	set_prio(0);
+	set_prio(0, 0);
 
 	pthread_create(&thd, NULL, thd_fn, NULL);
 	testing = 1;

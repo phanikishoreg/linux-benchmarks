@@ -9,11 +9,17 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <assert.h>
 
 #define USEC_WAIT   100
 #define ITERS       1000000
 
-extern void set_prio (unsigned int);
+#define CHILD_CPU   1
+#define CHILD_PRIO  0
+#define PARENT_CPU  0
+#define PARENT_PRIO 1
+
+extern void set_prio (unsigned int, int);
 
 static __inline__ unsigned long long
 rdtsc (void)
@@ -28,7 +34,7 @@ main(int argc, char **argv)
 {
 	int pipe1_fd[2], pipe2_fd[2];
 	pid_t child;
-	unsigned long long total, start, end, worst_case = 0;
+	unsigned long long total = 0, start, end, worst_case = 0;
 	char ch = 'a';
 
 	if (pipe(pipe1_fd) < 0) {
@@ -41,11 +47,12 @@ main(int argc, char **argv)
 		return -1;
 	}
 
-	set_prio(0);
 	child = fork();
 	if (child == 0) {
-		int i;
+		int i, first = 1;
 
+		set_prio(CHILD_PRIO, CHILD_CPU);
+		assert(sched_getcpu() == CHILD_CPU);
 		close(pipe1_fd[0]); /* only write here */
 		close(pipe2_fd[1]); /* only read here */
 
@@ -63,6 +70,10 @@ main(int argc, char **argv)
 			}
 			end = rdtsc();
 
+			if (first) {
+				first = 0;
+				continue;
+			}
 			if ((end - start) > worst_case) worst_case = end - start;
 			total += (end - start);
 
@@ -70,12 +81,13 @@ main(int argc, char **argv)
 		close(pipe1_fd[1]);
 		close(pipe2_fd[0]);
 
-		printf("rpc AVERAGE: %llu WORST: %llu\n", (total/(unsigned long long)ITERS), worst_case);
+		printf("rpc AVERAGE: %llu WORST: %llu\n", (total/(unsigned long long)(ITERS-1)), worst_case);
 		_exit(0);
 	} else if (child > 0) {
 		int i;
 
-		set_prio(1);
+		set_prio(PARENT_PRIO, PARENT_CPU);
+		assert(sched_getcpu() == PARENT_CPU);
 		close(pipe1_fd[1]); /* only read here */
 		close(pipe2_fd[0]); /* only write here */
 

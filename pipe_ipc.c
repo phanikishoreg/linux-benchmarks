@@ -9,11 +9,17 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <assert.h>
 
 #define USEC_WAIT   100
-#define ITERS       1000000
+#define ITERS       100
 
-extern void set_prio (unsigned int);
+#define CHILD_CPU   0
+#define CHILD_PRIO  0
+#define PARENT_CPU  0
+#define PARENT_PRIO 1
+
+extern void set_prio (unsigned int, int);
 
 static __inline__ unsigned long long
 rdtsc (void)
@@ -40,13 +46,15 @@ main(int argc, char **argv)
 	if (child > 0) {
 		int i;
 
+		set_prio(PARENT_PRIO, PARENT_CPU);
+		assert(sched_getcpu() == PARENT_CPU);
 		close(pipe_fd[0]);
 
-		set_prio(1);
 		/* making sure read blocks for predictability */
 		usleep(USEC_WAIT); 
 
 		for (i = 0 ; i < ITERS ; i ++) {
+			printf("W\n");
 			if (write(pipe_fd[1], &ch, 1) < 0) {
 				perror("write");
 				/* TODO: kill child! */
@@ -59,12 +67,14 @@ main(int argc, char **argv)
 	} else if (child == 0) {
 		int i;
 
-		set_prio(0);
+		set_prio(CHILD_PRIO, CHILD_CPU);
+		assert(sched_getcpu() == CHILD_CPU);
 		close(pipe_fd[1]);
 		r_total = 0;
 
 		for (i = 0 ; i < ITERS ; i ++) {
 			r_start = rdtsc();
+			printf("R\n");
 			if (read(pipe_fd[0], &ch, 1) < 0) {
 				perror("read");
 				_exit(-1);

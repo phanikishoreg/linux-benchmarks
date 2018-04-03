@@ -61,15 +61,13 @@ thd_affinity(pthread_t thd)
 }
 
 static void
-proc_affinity(void)
+proc_affinity(int cpu)
 {
-	int cpu_aff = 0;
-
 	cpu_set_t cpuset;
 	int i;
 
 	CPU_ZERO(&cpuset);
-	CPU_SET(cpu_aff, &cpuset);
+	CPU_SET(cpu, &cpuset);
 
 	if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset)) {
 		perror("sched_setaffinity:");
@@ -78,12 +76,12 @@ proc_affinity(void)
 		perror("sched_getaffinity:");
 	}
 
-	if (!CPU_ISSET(cpu_aff, &cpuset)) {
+	if (!CPU_ISSET(cpu, &cpuset)) {
 		printf("affinity not set\n");
 	} 
 
-	cpu_aff ++;
-	for (i = cpu_aff ; i < CPU_SETSIZE ; i ++) {
+	cpu ++;
+	for (i = cpu ; i < CPU_SETSIZE ; i ++) {
 		if (CPU_ISSET(i, &cpuset))
 			printf("affinity set invalid: %d\n", i);
 	}
@@ -122,11 +120,11 @@ pthread_prio(pthread_t thread, unsigned int nice)
 }
 
 void
-set_prio(unsigned int nice)
+set_prio(unsigned int nice, int cpu)
 {
 	struct sched_param sp;
 
-	proc_affinity();
+	proc_affinity(cpu);
 	call_getrlimit(RLIMIT_CPU, "CPU");
 #ifdef RLIMIT_RTTIME
 	call_getrlimit(RLIMIT_RTTIME, "RTTIME");
