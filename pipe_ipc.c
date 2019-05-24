@@ -23,12 +23,31 @@
 #define WORKSET_SIZE_MIN CACHE_LINE_SIZE
 #define WORKSET_SIZE_MAX (12*1024*1024)
 
-#define WORKSET_32K 512 //L1 data
-#define WORKSET_256K 4096 //L2
-#define WORKSET_12MB 196608 //L3
+#define WORKSET_16K 256
+#define WORKSET_24K 384
+#define WORKSET_32K 512
+#define WORKSET_48K 768
+#define WORKSET_64K 1024
+#define WORKSET_96K 1536
+#define WORKSET_128K 2048
+#define WORKSET_192K 3072
+#define WORKSET_256K 4096
+#define WORKSET_384K 6144
+#define WORKSET_512K 8192
 
-#define WORKSET_TEST_SIZE WORKSET_12MB /* power of 2, upto 12MB */
+/* more data */
+#define WORKSET_20K 320
+#define WORKSET_28K 448
+#define WORKSET_40K 640
+#define WORKSET_56K 896
+#define WORKSET_80K 1280
+#define WORKSET_112K 1792
+#define WORKSET_160K 2560
+#define WORKSET_224K 3584
+#define WORKSET_320K 5120
+#define WORKSET_448K 7168
 
+#define WORKSET_TEST_SIZE WORKSET_448K
 #define CACHE_LINE_ULL_NELE (CACHE_LINE_SIZE/sizeof(unsigned long long))
 struct workset_data {
 	unsigned long long n; /* next array item to access */
