@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <assert.h>
 
+#define ONLY_ONE
 #define USEC_WAIT   100
 #define ITERS       1000000
 
@@ -47,7 +48,7 @@
 #define WORKSET_320K 5120
 #define WORKSET_448K 7168
 
-#define WORKSET_TEST_SIZE WORKSET_448K
+#define WORKSET_TEST_SIZE WORKSET_512K
 #define CACHE_LINE_ULL_NELE (CACHE_LINE_SIZE/sizeof(unsigned long long))
 struct workset_data {
 	unsigned long long n; /* next array item to access */
@@ -158,10 +159,12 @@ read_fn(int fd[])
 	unsigned long long r_total = 0, r_start, r_end, r_worst = 0;
 
 	for (i = 0 ; i < ITERS ; i ++) {
+#ifndef ONLY_ONE
 		if (read(fd[0], &ch, 1) < 0) {
 			perror("read");
 			_exit(-1);
 		}
+#endif
 		r_start = rdtsc();
 		access_workset();
 		r_end = rdtsc();
@@ -170,8 +173,10 @@ read_fn(int fd[])
 	}
 	printf("Passive Cost (Workset:%d, sz:%d) AVERAGE: %llu, WORST: %llu\n", WORKSET_TEST_SIZE, WORKSET_TEST_SIZE * CACHE_LINE_SIZE, (r_total)/(ITERS), r_worst);
 
+#ifndef ONLY_ONE
 #ifndef USE_FORK
 	pthread_exit(NULL);
+#endif
 #endif
 }
 
@@ -190,6 +195,11 @@ main(int argc, char **argv)
 	access_workset();
 	printf("..done\n");
 
+#ifdef ONLY_ONE
+	set_prio(CHILD_PRIO, CHILD_CPU);
+
+	read_fn(pipe_fd);
+#else
 	if (pipe(pipe_fd) < 0) {
 		perror("pipe");
 		return -1;
@@ -238,6 +248,7 @@ main(int argc, char **argv)
 
 	close(pipe_fd[0]);
 	close(pipe_fd[1]);
+#endif
 
 	return -1;
 }
