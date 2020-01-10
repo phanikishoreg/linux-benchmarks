@@ -48,7 +48,16 @@
 #define WORKSET_320K 5120
 #define WORKSET_448K 7168
 
-#define WORKSET_TEST_SIZE WORKSET_512K
+#ifndef WORKSET_TEST_SIZE
+#define WORKSET_TEST_SIZE WORKSET_16K
+#endif
+
+#ifdef USE_FORK
+unsigned int is_fork = 1;
+#else
+unsigned int is_fork = 0;
+#endif
+
 #define CACHE_LINE_ULL_NELE (CACHE_LINE_SIZE/sizeof(unsigned long long))
 struct workset_data {
 	unsigned long long n; /* next array item to access */
@@ -65,6 +74,10 @@ rdtsc (void)
   __asm__ volatile (".byte 0x0f, 0x31" : "=A" (x));
   return x;
 }
+
+unsigned long long cycs[ITERS];
+
+char *exename;
 
 static inline void
 generate_workset(void)
@@ -117,7 +130,7 @@ generate_workset(void)
 
 volatile unsigned long sum;
 
-static void __attribute__((noinline))
+static void __attribute__((optnone, noinline))
 access_workset(void)
 {
 	unsigned long long i = 0;
@@ -158,7 +171,7 @@ read_fn(int fd[])
 	char ch;
 	unsigned long long r_total = 0, r_start, r_end, r_worst = 0;
 
-	for (i = 0 ; i < ITERS ; i ++) {
+	for (i = 0 ; i < ITERS ;) {
 #ifndef ONLY_ONE
 		if (read(fd[0], &ch, 1) < 0) {
 			perror("read");
@@ -168,10 +181,19 @@ read_fn(int fd[])
 		r_start = rdtsc();
 		access_workset();
 		r_end = rdtsc();
-		if ((r_end - r_start) > r_worst) r_worst = r_end - r_start;
-		r_total += (r_end - r_start);
+		if (r_end < r_start) continue;
+		unsigned long long diff = r_end - r_start;
+		cycs[i] = diff;
+		i++;
+		if ((r_end - r_start) > r_worst) r_worst = diff;
+		r_total += (diff);
 	}
-	printf("Passive Cost (Workset:%d, sz:%d) AVERAGE: %llu, WORST: %llu\n", WORKSET_TEST_SIZE, WORKSET_TEST_SIZE * CACHE_LINE_SIZE, (r_total)/(ITERS), r_worst);
+	for (i = 0; i < ITERS; i++) {
+		printf("%llu\n", cycs[i]);
+	}
+	fprintf(stderr, "%s,%d: %llu\n", exename, WORKSET_TEST_SIZE * CACHE_LINE_SIZE, (r_total)/(ITERS));
+	//printf("Passive Cost (Workset:%d, sz:%d) AVERAGE: %llu, WORST: %llu\n", WORKSET_TEST_SIZE, WORKSET_TEST_SIZE * CACHE_LINE_SIZE, (r_total)/(ITERS), r_worst);
+	printf("%d, %d, %s, %d, %d, %llu, %llu\n", is_fork, ITERS, exename, WORKSET_TEST_SIZE, WORKSET_TEST_SIZE * CACHE_LINE_SIZE, (r_total)/(ITERS), r_worst);
 
 #ifndef ONLY_ONE
 #ifndef USE_FORK
@@ -184,16 +206,17 @@ read_fn(int fd[])
 int
 main(int argc, char **argv)
 {
+	exename = argv[0];
 	int pipe_fd[2];
 	pid_t child;
 	pthread_t thd;
 
-	printf("generate\n");
+	//printf("generate\n");
 	generate_workset();
-	printf("..done\n");
-	printf("access\n");
+	//printf("..done\n");
+	//printf("access\n");
 	access_workset();
-	printf("..done\n");
+	//printf("..done\n");
 
 #ifdef ONLY_ONE
 	set_prio(CHILD_PRIO, CHILD_CPU);
@@ -244,6 +267,7 @@ main(int argc, char **argv)
 	set_prio(PARENT_PRIO, PARENT_CPU);
 	
 	write_fn(pipe_fd);
+	pthread_join(thd, NULL);
 #endif
 
 	close(pipe_fd[0]);
